@@ -1,0 +1,76 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #030643;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+.game-wrapper {
+  width: 100%;
+  max-width: 420px;
+  padding: 12px;
+}
+
+.hud {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.game-area {
+   position: relative;
+  width: 100%;
+  height: 60vh;
+  background-image: url('background.png'); /* путь к вашей картинке */
+  background-size: cover;      /* картинка заполняет весь блок */
+  background-position: center; /* центрирование картинки */
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.hero {
+  position: absolute;
+  bottom: 10px;
+  width: 180px;       /* можно увеличить, если картинка большая */
+  height: 180px;      /* подгоняем под реальный размер изображения */
+  border-radius: 12px; /* по желанию, можно убрать */
+  object-fit: contain;  /* изображение под размер блока */
+}
+
+.item {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.good {
+  background: #38bdf8;
+}
+
+.bad {
+  background: #ef4444;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.controls button {
+  flex: 1;
+  height: 50px;
+  font-size: 22px;
+  background: #334155;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+}
