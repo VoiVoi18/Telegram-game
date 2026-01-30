@@ -3,153 +3,177 @@ document.addEventListener("DOMContentLoaded", () => {
   const gameArea = document.getElementById("gameArea");
   const hero = document.getElementById("hero");
   const scoreEl = document.getElementById("score");
-  const livesEl = document.getElementById("lives");
   const recordEl = document.getElementById("record");
+  const livesEl = document.getElementById("lives");
+
+  const leftBtn = document.getElementById("left");
+  const rightBtn = document.getElementById("right");
+
+  // ===== ИГРОВОЕ СОСТОЯНИЕ =====
+  let heroWidth = 150;
+  let heroHeight = 150;
+  let heroX = (gameArea.clientWidth - heroWidth) / 2;
+  hero.style.left = heroX + "px";
 
   let score = 0;
   let lives = 3;
   let gameOver = false;
 
-  // ===== РЕКОРД =====
-  let record = localStorage.getItem("record") || 0;
+  let baseFallSpeed = 2.5;
+  let speedMultiplier = 1;
+
+  let record = Number(localStorage.getItem("record") || 0);
   recordEl.textContent = record;
 
-  // ===== ГЕРОЙ =====
-  let heroX = 0;
-  const heroSpeed = 5; // ← регулируй плавность тут
+  const HERO_SPEED = 6;
 
-  function heroWidth() {
-    return hero.offsetWidth;
-  }
+  // ===== ПЕРЕМЕННЫЕ СПАВНА =====
+  let spawnInterval = 900; // время между волнами
+  let spawnCount = 1;      // предметов за волну
+  let spawnDelay = 150;    // задержка между предметами в одной волне
+  let spawnTimer = null;   // объявляем до использования
 
-  function heroHeight() {
-    return hero.offsetHeight;
-  }
-
-  function initHeroPosition() {
-    heroX = (gameArea.clientWidth - heroWidth()) / 2;
-    hero.style.left = heroX + "px";
-  }
-
-  initHeroPosition();
-
-  // ===== УПРАВЛЕНИЕ =====
+  // ===== УПРАВЛЕНИЕ ГЕРОЕМ =====
   let leftPressed = false;
   let rightPressed = false;
 
-  document.addEventListener("keydown", (e) => {
+  document.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft") leftPressed = true;
     if (e.key === "ArrowRight") rightPressed = true;
   });
 
-  document.addEventListener("keyup", (e) => {
+  document.addEventListener("keyup", e => {
     if (e.key === "ArrowLeft") leftPressed = false;
     if (e.key === "ArrowRight") rightPressed = false;
   });
 
-  // Кнопки на экране (тач)
-  const leftBtn = document.getElementById("left");
-  const rightBtn = document.getElementById("right");
-
-  leftBtn.addEventListener("touchstart", () => leftPressed = true);
-  leftBtn.addEventListener("touchend", () => leftPressed = false);
-  leftBtn.addEventListener("mousedown", () => leftPressed = true);
-  leftBtn.addEventListener("mouseup", () => leftPressed = false);
-  leftBtn.addEventListener("mouseleave", () => leftPressed = false);
-
-  rightBtn.addEventListener("touchstart", () => rightPressed = true);
-  rightBtn.addEventListener("touchend", () => rightPressed = false);
-  rightBtn.addEventListener("mousedown", () => rightPressed = true);
-  rightBtn.addEventListener("mouseup", () => rightPressed = false);
-  rightBtn.addEventListener("mouseleave", () => rightPressed = false);
-
-  function updateHero() {
-    if (gameOver) return;
-
-    if (leftPressed) heroX -= heroSpeed;
-    if (rightPressed) heroX += heroSpeed;
-
-    if (heroX < 0) heroX = 0;
-    if (heroX > gameArea.clientWidth - heroWidth()) {
-      heroX = gameArea.clientWidth - heroWidth();
-    }
-
-    hero.style.left = heroX + "px";
-    requestAnimationFrame(updateHero);
+  function bindButton(btn, dir) {
+    btn.addEventListener("touchstart", e => {
+      e.preventDefault();
+      if (dir === "left") leftPressed = true;
+      else rightPressed = true;
+    });
+    btn.addEventListener("touchend", e => {
+      if (dir === "left") leftPressed = false;
+      else rightPressed = false;
+    });
+    btn.addEventListener("mousedown", () => {
+      if (dir === "left") leftPressed = true;
+      else rightPressed = true;
+    });
+    btn.addEventListener("mouseup", () => {
+      if (dir === "left") leftPressed = false;
+      else rightPressed = false;
+    });
+    btn.addEventListener("mouseleave", () => {
+      if (dir === "left") leftPressed = false;
+      else rightPressed = false;
+    });
   }
 
-  requestAnimationFrame(updateHero);
+  bindButton(leftBtn, "left");
+  bindButton(rightBtn, "right");
 
   // ===== ПРЕДМЕТЫ =====
-  const goodImages = [
-    "edi.png",
-    "hw.png",
-    "hsm.png"
-  ];
+  const goodImages = ["edi.png","hw.png","hsm.png"];
   const badImage = "bug.png";
-  let baseSpeed = 2;
+
+  const GOOD_SIZE = 36;
+  const BAD_SIZE = 27;
+
+  let items = [];
+
+  // ===== СПАВН ВОЛНЫ =====
+  function spawnWave() {
+    if (gameOver) return;
+
+    for (let i = 0; i < spawnCount; i++) {
+      setTimeout(() => {
+        spawnItem();
+      }, i * spawnDelay);
+    }
+  }
 
   function spawnItem() {
     if (gameOver) return;
 
+    const isBad = Math.random() < 0.25;
     const item = document.createElement("img");
     item.className = "item";
-
-    const isGood = Math.random() > 0.3;
-    item.src = isGood
-      ? goodImages[Math.floor(Math.random() * goodImages.length)]
-      : badImage;
-
-    item.dataset.good = isGood ? "true" : "false";
-
-    const itemSize = 36;
-    let x = Math.random() * (gameArea.clientWidth - itemSize);
-    let y = -itemSize;
-
+    item.src = isBad ? badImage : goodImages[Math.floor(Math.random()*goodImages.length)];
+    const size = isBad ? BAD_SIZE : GOOD_SIZE;
+    item.style.width = size + "px";
+    item.style.height = size + "px";
+    item.style.position = "absolute";
+    let x = Math.random() * (gameArea.clientWidth - size);
+    let y = -size;
     item.style.left = x + "px";
     item.style.top = y + "px";
     gameArea.appendChild(item);
 
-    const speed = baseSpeed + Math.random() * 1.5;
+    const speed = baseFallSpeed * speedMultiplier * (0.95 + Math.random() * 0.1);
 
-    const interval = setInterval(() => {
-      if (gameOver) {
-        clearInterval(interval);
-        item.remove();
-        return;
-      }
+    items.push({el: item, x, y, size, speed, isBad});
+  }
 
-      y += speed;
-      item.style.top = y + "px";
+  // ===== ОБНОВЛЕНИЕ =====
+  function update() {
+    if (gameOver) return;
 
-      // ===== КОЛЛИЗИЯ (до середины героя) =====
-      const heroTop = hero.offsetTop;
-      const heroMid = heroTop + heroHeight() / 2;
+    // движение героя
+    if (leftPressed) heroX -= HERO_SPEED;
+    if (rightPressed) heroX += HERO_SPEED;
 
-      const collision =
-        y + itemSize >= heroMid &&
-        x + itemSize >= heroX &&
-        x <= heroX + heroWidth();
+    if (heroX < 0) heroX = 0;
+    if (heroX > gameArea.clientWidth - heroWidth) heroX = gameArea.clientWidth - heroWidth;
+    hero.style.left = heroX + "px";
 
-      if (collision) {
-        clearInterval(interval);
-        item.remove();
+    // падение предметов
+    for (let i = items.length-1; i>=0; i--) {
+      const item = items[i];
+      item.y += item.speed;
+      item.el.style.top = item.y + "px";
 
-        if (item.dataset.good === "true") {
+      const catchLine = gameArea.clientHeight - heroHeight - 5;
+const caught = item.y + item.size >= catchLine &&
+                      item.x + item.size > heroX &&
+                      item.x < heroX + heroWidth;
+
+      if (caught) {
+        if (item.isBad) {
+          lives--;
+          if (livesEl) livesEl.textContent = "❤️".repeat(lives);
+          if (lives <= 0) {
+            endGame();
+            return;
+          }
+        } else {
           score += 10;
           scoreEl.textContent = score;
-          baseSpeed = 2 + Math.floor(score / 50);
-        } else {
-          lives--;
-          livesEl.textContent = "❤️".repeat(lives);
-          if (lives <= 0) endGame();
+
+          // ускорение каждые 50 очков
+          if (score % 50 === 0) {
+            speedMultiplier += 0.25;
+          }
+
+          // увеличение количества предметов каждые 100 очков
+          if (score % 100 === 0 && spawnCount < 4) {
+            spawnCount++;
+          }
         }
+
+        gameArea.removeChild(item.el);
+        items.splice(i,1);
+        continue;
       }
-if (y > gameArea.clientHeight) {
-        clearInterval(interval);
-        item.remove();
+
+      if (item.y > gameArea.clientHeight) {
+        gameArea.removeChild(item.el);
+        items.splice(i,1);
       }
-    }, 16);
+    }
+
+    requestAnimationFrame(update);
   }
 
   // ===== КОНЕЦ ИГРЫ =====
@@ -157,7 +181,9 @@ if (y > gameArea.clientHeight) {
     gameOver = true;
 
     if (score > record) {
-      localStorage.setItem("record", score);
+      record = score;
+      localStorage.setItem("record", record);
+      recordEl.textContent = record;
     }
 
     const overlay = document.createElement("div");
@@ -168,44 +194,46 @@ if (y > gameArea.clientHeight) {
     overlay.style.flexDirection = "column";
     overlay.style.alignItems = "center";
     overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "10";
     overlay.style.color = "#fff";
 
     const title = document.createElement("div");
-    title.textContent = "💥 Игра окончена";
-    title.style.fontSize = "22px";
+    title.textContent = "Игра окончена";
+    title.style.fontSize = "24px";
     title.style.marginBottom = "12px";
 
-    const result = document.createElement("div");
-    result.textContent = "Очки: " + score;
-    result.style.marginBottom = "16px";
-const button = document.createElement("button");
-button.textContent = "Начать заново";
+    const scoreText = document.createElement("div");
+    scoreText.textContent = "Очки: " + score;
+    scoreText.style.marginBottom = "20px";
 
-// Стили кнопки
-button.style.padding = "14px 28px";
-button.style.fontSize = "18px";
-button.style.border = "none";
-button.style.borderRadius = "50px"; // круглая
-button.style.background = "#236192"; // основной цвет
-button.style.color = "#ffffff"; // белый текст
-button.style.cursor = "pointer";
-button.style.transition = "all 0.2s ease";
 
- // Добавим hover эффект
-button.addEventListener("mouseover", () => {
-  button.style.background = "#1b4d75"; // темнее при наведении
-});
-button.addEventListener("mouseout", () => {
-  button.style.background = "#236192";
-});
+    const btn = document.createElement("button");
+    btn.textContent = "Начать заново";
+    btn.style.padding = "14px 28px";
+    btn.style.borderRadius = "50px";
+    btn.style.border = "none";
+    btn.style.fontSize = "18px";
+    btn.style.background = "#236192";
+    btn.style.color = "#fff";
 
-button.addEventListener("click", () => location.reload());
+    btn.addEventListener("click", () => location.reload());
 
     overlay.appendChild(title);
-    overlay.appendChild(result);
-    overlay.appendChild(button);
+    overlay.appendChild(scoreText);
+    overlay.appendChild(btn);
     gameArea.appendChild(overlay);
   }
 
-  setInterval(spawnItem, 900);
+  // ===== СТАРТ =====
+  startSpawner();
+  update();
+
+  // ===== Функция для запуска спавнера =====
+  function startSpawner() {
+    if (spawnTimer) clearInterval(spawnTimer);
+    spawnTimer = setInterval(() => {
+      if (!gameOver) spawnWave();
+    }, spawnInterval);
+  }
+
 });
